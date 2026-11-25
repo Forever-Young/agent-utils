@@ -1,0 +1,9 @@
+# Stable tailnet name for the Plannotator Inbox. Replace the host name, the bind
+# address (your Mac's Tailscale IP, `tailscale ip -4`) and the certificate paths.
+inbox.example-tailnet.ts.net {
+	bind 100.64.0.1
+	tls /opt/homebrew/etc/ssl/tailscale/cert.crt /opt/homebrew/etc/ssl/tailscale/cert.key
+
+	# Written by inbox_caddy_sync.sh: the reverse_proxy block with the current port.
+	import ~/.plannotator/caddy-upstream.caddy
+}

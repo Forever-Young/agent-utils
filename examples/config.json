@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "providers": {"auto_detect": true, "hidden": [], "enabled": []},
+  "new_session_position": "default",
+  "windows": [
+    {"name": "Work", "default_agent": "claude", "projects": [
+      {"id": "example", "name": "Example", "roots": ["~/Projects/example"], "enabled": true}
+    ]},
+    {"name": "Personal", "default_agent": "codex", "projects": []}
+  ]
+}

@@ -1,0 +1,5 @@
+interface:
+  display_name: "agterm utility workflows (draft)"
+  short_description: "Project, task and remote session workflows"
+policy:
+  allow_implicit_invocation: false
