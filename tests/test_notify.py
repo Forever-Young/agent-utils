@@ -23,11 +23,17 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*a):pass
 
 
+REAL_IDLE_SECONDS=notify.idle_seconds
+REAL_SCREEN_LOCKED=notify.screen_locked
+
+
 class NotifyTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         patcher=mock.patch.dict(os.environ,{'XDG_CONFIG_HOME':self.tmp.name});patcher.start();self.addCleanup(patcher.stop)
         Handler.got=[]
+        idle=mock.patch.object(notify,'idle_seconds',return_value=1e9);idle.start();self.addCleanup(idle.stop)  # away
+        lock=mock.patch.object(notify,'screen_locked',return_value=False);lock.start();self.addCleanup(lock.stop)
         self.server=HTTPServer(('127.0.0.1',0),Handler);self.addCleanup(self.server.server_close)
         threading.Thread(target=self.server.serve_forever,daemon=True).start();self.addCleanup(self.server.shutdown)
         self.url='http://127.0.0.1:%d/my-topic'%self.server.server_port
@@ -55,6 +61,60 @@ class NotifyTests(unittest.TestCase):
         self.assertEqual(Handler.got,[('/',{'topic':'my-topic','title':'Plan ü','message':'Failed: tests','priority':4,'tags':['failed']})])
         self.run_cmd('disable');self.run_cmd('send','--agent','kiro','--session','s','--event','done')
         self.assertEqual(len(Handler.got),1)
+    def test_skipped_while_at_the_computer(self):
+        self.run_cmd('url',self.url);self.run_cmd('enable')
+        with mock.patch.object(notify,'idle_seconds',return_value=5.0):
+            code,out=self.run_cmd('send','--agent','kiro','--session','s','--event','done')
+            self.assertEqual((code,out,Handler.got),(0,'',[]))  # silent, nothing sent
+            self.assertIn('would skip: at the computer',self.run_cmd('--dry-run','send','--agent','k','--session','s','--event','done')[1])
+            self.run_cmd('test');self.assertEqual(len(Handler.got),1)  # the test event ignores the check
+        with mock.patch.object(notify,'idle_seconds',return_value=500.0):
+            self.run_cmd('send','--agent','kiro','--session','s','--event','done')
+        self.assertEqual(len(Handler.got),2)
+    def test_away_after_setting(self):
+        self.run_cmd('url',self.url);self.run_cmd('enable')
+        self.assertEqual(notify.load()['away_after_seconds'],120)
+        self.run_cmd('away-after','0')
+        with mock.patch.object(notify,'idle_seconds',return_value=1.0):
+            self.run_cmd('send','--agent','kiro','--session','s','--event','done')
+        self.assertEqual(len(Handler.got),1)
+        for bad in ('-1','86401'):
+            with self.assertRaises(ValueError):self.run_cmd('away-after',bad)
+    def test_unreadable_idle_time_never_suppresses(self):
+        with mock.patch.object(notify,'idle_seconds',return_value=None):
+            self.assertIsNone(notify.at_computer({'away_after_seconds':120}))
+        self.assertEqual(notify.at_computer({'away_after_seconds':120},idle=3.0),3.0)
+        self.assertIsNone(notify.at_computer({'away_after_seconds':120},idle=120.0))
+        self.assertIsNone(notify.at_computer({'away_after_seconds':True},idle=1.0))
+    def test_locked_screen_counts_as_away(self):
+        cfg={'away_after_seconds':120,'away_when_locked':True}
+        self.assertIsNone(notify.at_computer(cfg,idle=3.0,locked=True))
+        self.assertEqual(notify.at_computer(cfg,idle=3.0,locked=False),3.0)
+        self.assertEqual(notify.at_computer(cfg,idle=3.0,locked=None),3.0)  # unreadable lock state never suppresses
+        self.assertEqual(notify.at_computer(dict(cfg,away_when_locked=False),idle=3.0,locked=True),3.0)
+        self.assertEqual(notify.at_computer({'away_after_seconds':120},idle=3.0,locked=False),3.0)
+        self.run_cmd('url',self.url);self.run_cmd('enable')
+        with mock.patch.object(notify,'idle_seconds',return_value=2.0),mock.patch.object(notify,'screen_locked',return_value=True):
+            self.run_cmd('send','--agent','kiro','--session','s','--event','done')
+        self.assertEqual(len(Handler.got),1)  # locked: sent although the last input was 2 s ago
+        self.run_cmd('away-when-locked','off');self.assertFalse(notify.load()['away_when_locked'])
+        self.run_cmd('away-when-locked','on');self.assertTrue(notify.load()['away_when_locked'])
+    def test_screen_locked_parses_ioreg(self):
+        def run(text):
+            with mock.patch.object(notify.sys,'platform','darwin'),mock.patch.object(notify.subprocess,'run',return_value=mock.Mock(stdout=text)):
+                return REAL_SCREEN_LOCKED()
+        self.assertTrue(run('"IOConsoleLocked" = Yes\n'))
+        self.assertTrue(run('"IOConsoleLocked" = No\n"IOConsoleUsers" = ({"CGSSessionScreenIsLocked"=Yes})'))
+        self.assertFalse(run('"IOConsoleLocked" = No\n'))
+        self.assertIsNone(run('nothing useful'))
+        with mock.patch.object(notify.sys,'platform','linux'):
+            self.assertIsNone(REAL_SCREEN_LOCKED())
+    def test_idle_seconds_parses_ioreg(self):
+        out=mock.Mock(stdout='|   "HIDIdleTime" = 2500000000\n')
+        with mock.patch.object(notify.sys,'platform','darwin'),mock.patch.object(notify.subprocess,'run',return_value=out):
+            self.assertEqual(REAL_IDLE_SECONDS(),2.5)
+        with mock.patch.object(notify.sys,'platform','linux'):
+            self.assertIsNone(REAL_IDLE_SECONDS())
     def test_template_and_dry_run(self):
         self.run_cmd('url',self.url);self.run_cmd('enable')
         self.run_cmd('template','--title','[{agent}] {session}','--body','{event}')
@@ -78,7 +138,7 @@ class NotifyTests(unittest.TestCase):
         tree={'workspaces':[{'sessions':[{'id':'s1','name':'Topic, plan'}]}]}
         self.assertEqual(notify.find_session_name('s1',tree),'Topic, plan');self.assertIsNone(notify.find_session_name('s2',tree))
     def test_kiro_hook_pushes_outside_agterm(self):
-        self.run_cmd('url',self.url);self.run_cmd('enable')
+        self.run_cmd('url',self.url);self.run_cmd('enable');self.run_cmd('away-after','0')  # the hook runs as a subprocess
         env={k:v for k,v in os.environ.items() if not k.startswith('AGTERM')};env['AGENT_UTILS_SESSION_NAME']='Kiro topic'
         hook=ROOT/'agent_utils/agterm/kiro_hook.py'
         for action in ('attention','completed','active'):

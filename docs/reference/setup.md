@@ -324,6 +324,10 @@ into `packaging/homebrew/agent-utils-tap.rb` and into the tap checkout's
 `Formula/agent-utils.rb`. The formula therefore installs exactly the uploaded file. The tap
 is not committed or pushed; review it, commit and push yourself.
 
+The release notes are the `## [VERSION]` section of `CHANGELOG.md` plus a link comparing
+the version with the previous release (`Full changelog: .../compare/vOLD...vNEW`). The
+script stops, in the preview too, when `CHANGELOG.md` has no section for `version`.
+
 ```sh
 python3 scripts/release.py           # preview: version, tag, asset URL
 python3 scripts/release.py --apply
@@ -337,7 +341,8 @@ python3 scripts/release.py --apply
 | `--tap-dir DIR` | Tap checkout. Default `brew --repository Forever-Young/tap`. |
 | `--allow-dirty` | Release `HEAD` even with uncommitted changes (they are not included). |
 
-It refuses when the release already exists: raise `version` in `pyproject.toml` first.
+It refuses when the release already exists: raise `version` in `pyproject.toml` first and
+add the matching `CHANGELOG.md` section.
 Needs `gh` signed in.
 
 ### Wrapper scripts

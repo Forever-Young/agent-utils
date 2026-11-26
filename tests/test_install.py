@@ -62,7 +62,7 @@ class BrewTests(unittest.TestCase):
         self.assertEqual(out.count('\n  sha256 "'), 1)
         self.assertIn('  sha256 "%s"\n' % ('b' * 64), out)
         self.assertNotIn('revision:', out)
-        self.assertEqual(module.version_of(root), '0.1.0')
+        self.assertEqual(module.version_of(root), '0.1.1')
 
     def test_installed_copy_installs_from_recorded_source(self):
         from agent_utils.core.setup import installer

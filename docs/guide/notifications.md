@@ -37,6 +37,16 @@ agents agent notify send --agent codex --event done --detail 'tests pass'
 `agents agent notify` and `agents admin notify` are the same command; agents use the
 first, people the second.
 
+### Only when you are away
+
+On macOS a push is skipped while you are at the computer: the last keyboard or mouse input,
+in any app, was less than `away_after_seconds` ago (default 120). The agterm row marks and
+local notifications still show. Change it in `agents configure` (Notifications), with
+`agents admin notify away-after 300`, or `agents admin config set notify.away_after_seconds 300`;
+0 always sends. A locked screen counts as away too and sends at once; turn that off with
+`agents admin notify away-when-locked off`. `agents admin notify test` ignores the check. Where the idle time cannot be read the
+push is sent as before.
+
 ### Use it from Claude Code and Codex
 
 agent-utils does not change Claude Code or Codex configuration. To replace your own

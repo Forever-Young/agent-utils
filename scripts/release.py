@@ -4,7 +4,8 @@
 Preview by default. With --apply it
   1. builds dist/agent-utils-VERSION.tar.gz with `git archive` (VERSION is `version` in pyproject.toml),
   2. tags vVERSION on HEAD and creates the GitHub release with that tarball as its asset
-     (`gh release create`; the tag is pushed by gh),
+     (`gh release create`; the tag is pushed by gh). The release notes are the VERSION section of
+     CHANGELOG.md plus a link comparing it with the previous release; no such section, no release,
   3. rewrites url, version and sha256 in packaging/homebrew/agent-utils-tap.rb and in the tap
      checkout's Formula/agent-utils.rb. The tap is not committed or pushed; review it first.
 The formula points at the uploaded asset, so its checksum is the checksum of the file users download.
@@ -27,6 +28,31 @@ def run(*cmd, **kw):
 
 def version_of(root=ROOT):
     return re.search(r'^version\s*=\s*"([^"]+)"', (root / 'pyproject.toml').read_text(), re.M).group(1)
+
+
+def changelog_notes(version, root=ROOT):
+    """The `## [VERSION]` section of CHANGELOG.md (heading excluded), or SystemExit when there is none."""
+    path = root / 'CHANGELOG.md'
+    text = path.read_text() if path.exists() else ''
+    match = re.search(r'^## \[%s\][^\n]*\n(.*?)(?=^## \[|\Z)' % re.escape(version), text, re.M | re.S)
+    if not match or not match.group(1).strip():
+        raise SystemExit('CHANGELOG.md has no section "## [%s]". Add one before releasing.' % version)
+    return match.group(1).strip() + '\n'
+
+
+def release_notes(version, previous, repo=REPO, root=ROOT):
+    notes = changelog_notes(version, root)
+    if previous:
+        notes += '\n**Full changelog**: https://github.com/%s/compare/%s...v%s\n' % (repo, previous, version)
+    return notes
+
+
+def previous_tag(repo, tag):
+    """Tag of the newest release other than `tag`, or None (no releases, or gh not available)."""
+    out = subprocess.run(['gh', 'release', 'list', '--repo', repo, '--limit', '5', '--json', 'tagName', '-q', '.[].tagName'],
+                         capture_output=True, text=True)
+    tags = [t for t in out.stdout.split() if t != tag] if out.returncode == 0 else []
+    return tags[0] if tags else None
 
 
 def asset_url(version, repo=REPO):
@@ -65,15 +91,19 @@ def main(argv=None):
     print('Version:', version, '(from pyproject.toml)')
     print('Tag:', tag)
     print('Asset:', url)
+    changelog_notes(version)  # fail early, also in the preview
     if not a.apply:
+        print('Notes: CHANGELOG.md section %s' % version)
         print('Preview only. Add --apply to build, tag, release and write the formulas.')
         return 0
     if subprocess.run(['gh', 'release', 'view', tag, '--repo', a.repo], capture_output=True).returncode == 0:
         raise SystemExit('Release %s exists on %s. Raise `version` in pyproject.toml for a new release.' % (tag, a.repo))
     tarball, sha = build(version, a.out_dir)
     print('Tarball:', tarball, sha)
+    notes = a.out_dir / ('release-notes-%s.md' % version)
+    notes.write_text(release_notes(version, previous_tag(a.repo, tag), a.repo))
     run('gh', 'release', 'create', tag, str(tarball), '--repo', a.repo, '--target', run('git', 'rev-parse', 'HEAD', cwd=ROOT, capture_output=True).stdout.strip(),
-        '--title', 'agent-utils ' + version, '--generate-notes')
+        '--title', 'agent-utils ' + version, '--notes-file', str(notes))
     targets = [ROOT / 'packaging/homebrew/agent-utils-tap.rb']
     tap = a.tap_dir or Path(run('brew', '--repository', TAP, capture_output=True).stdout.strip())
     if (tap / 'Formula').is_dir():

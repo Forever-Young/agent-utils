@@ -243,8 +243,13 @@ These manage `notify.json`; [admin.md](admin.md) documents them under `agents ad
 | `agents agent notify disable` | Turn notifications off. |
 | `agents agent notify test` | Send one `info` test event now, even when disabled. |
 | `agents agent notify url URL` | Set the ntfy URL, `https://ntfy.sh/YOUR-TOPIC`. |
+| `agents agent notify away-after SECONDS` | Send pushes only when the last keyboard or mouse input was at least this many seconds ago (macOS). Default 120; 0 always sends. |
+| `agents agent notify away-when-locked on\|off` | Count a locked screen as away, so the push is sent at once (default on). |
 | `agents agent notify template` | Set the title (`--title`) and/or body (`--body`) template. |
 
+
+While you are at the computer (input less than `away_after_seconds` ago and, with `away_when_locked` on, the screen not locked) `send` and `hook` push
+nothing and print nothing; `test` ignores the check. If the idle time cannot be read (not macOS) the push is sent.
 
 `agents agent notify mobile-host HOST` sets the saved Mac hostname (or saved Mac UUID)
 used by the mobile app. When it is set and AGTERM_SESSION_ID is available, ntfy messages

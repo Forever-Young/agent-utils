@@ -7,11 +7,16 @@ never fails the calling hook.
 
 `agents admin notify show|enable|disable|url URL|test` manages the external config
 `<config dir>/notify.json`.
+
+On macOS a push is skipped while the owner is at the computer: the last keyboard or mouse input
+was less than `away_after_seconds` ago (default 120, 0 turns the check off) and the screen is not locked
+(`away_when_locked`, default on: a locked screen counts as away).
 """
 import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -21,8 +26,11 @@ from .files import atomic_write
 from .paths import config_dir
 
 EVENTS = {'done': ('Done', 3), 'input': ('Input needed', 4), 'failed': ('Failed', 4), 'info': ('Info', 3)}
+AWAY_AFTER_DEFAULT = 120
 DEFAULTS = {'version': 1, 'enabled': False, 'transport': 'ntfy', 'url': '',
-            'title': '{session}', 'body': '{event_text}{detail_suffix}', 'mobile_host': ''}
+            'title': '{session}', 'body': '{event_text}{detail_suffix}', 'mobile_host': '',
+            'away_after_seconds': AWAY_AFTER_DEFAULT, 'away_when_locked': True}
+QUIET_RESULTS = ('disabled', 'sent', 'at computer')
 
 
 def config_file():
@@ -42,6 +50,50 @@ def load():
 
 def save(data):
     atomic_write(config_file(), {k: data[k] for k in DEFAULTS})
+
+
+def idle_seconds():
+    """Seconds since the last keyboard or mouse input on this Mac, or None when it cannot be read
+    (not macOS, no ioreg, odd output). Callers treat None as "unknown" and do not suppress."""
+    if sys.platform != 'darwin':
+        return None
+    try:
+        out = subprocess.run(['ioreg', '-c', 'IOHIDSystem'], capture_output=True, text=True, timeout=3,
+                             stdin=subprocess.DEVNULL).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.search(r'"HIDIdleTime"\s*=\s*(\d+)', out)
+    return int(match.group(1)) / 1e9 if match else None
+
+
+def screen_locked():
+    """True when the macOS screen is locked, False when not, None when it cannot be read."""
+    if sys.platform != 'darwin':
+        return None
+    try:
+        out = subprocess.run(['ioreg', '-r', '-k', 'IOConsoleUsers', '-d1', '-w0'], capture_output=True, text=True,
+                             timeout=3, stdin=subprocess.DEVNULL).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if re.search(r'"CGSSessionScreenIsLocked"\s*=\s*Yes', out):
+        return True
+    match = re.search(r'"IOConsoleLocked"\s*=\s*(Yes|No)', out)
+    return match.group(1) == 'Yes' if match else None
+
+
+def at_computer(config, idle=None, locked=None):
+    """Returns the idle seconds when the owner is at the computer, else None. At the computer means the last
+    input was less than away_after_seconds ago and, unless away_when_locked is off, the screen is not locked.
+    0 turns the check off; an idle time or lock state that cannot be read never suppresses."""
+    limit = config.get('away_after_seconds', AWAY_AFTER_DEFAULT)
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0:
+        return None
+    idle = idle_seconds() if idle is None else idle
+    if idle is None or idle >= limit:
+        return None
+    if config.get('away_when_locked', True) and (screen_locked() if locked is None else locked):
+        return None
+    return idle
 
 
 def valid_url(url):
@@ -143,6 +195,11 @@ def send(agent, session, event, detail='', dry_run=False, config=None):
         return 'disabled'
     if not valid_url(config['url']):
         return 'no valid url configured'
+    near = at_computer(config)
+    if near is not None:
+        if dry_run:
+            return 'would skip: at the computer (idle %ds, away after %ds)' % (near, config['away_after_seconds'])
+        return 'at computer'
     title, body, priority = render(config, agent, session, event, detail)
     if dry_run:
         return 'would send to %s: %s | %s | priority %s' % (config['url'], title, body, priority)
@@ -173,6 +230,10 @@ def command(argv, prog='agents admin notify'):
     for name, help_text in (('show', 'print the configuration'), ('enable', 'turn notifications on'),
                             ('disable', 'turn notifications off'), ('test', 'send a test event now')):
         sub.add_parser(name, help=help_text)
+    a = sub.add_parser('away-after', help='push only after this many idle seconds at the computer; 0 always sends')
+    a.add_argument('seconds', type=int)
+    lk = sub.add_parser('away-when-locked', help='treat a locked screen as away, so a push is sent at once (default on)')
+    lk.add_argument('state', choices=['on', 'off'])
     m = sub.add_parser('mobile-host', help='set the saved mobile app Mac hostname for notification links; empty disables')
     m.add_argument('host')
     u = sub.add_parser('url', help='set the ntfy URL (https://host/topic)')
@@ -182,14 +243,14 @@ def command(argv, prog='agents admin notify'):
     args = parser.parse_args(argv)
     if args.action == 'send':
         result = send(args.agent, args.session or default_session(), args.event, args.detail, args.dry_run)
-        if not args.quiet and result not in ('disabled', 'sent'):
+        if not args.quiet and result not in QUIET_RESULTS:
             print(result)
         return 0
     if args.action == 'hook':
         event = parse_hook(args.agent, args.payload if args.payload is not None else sys.stdin.read())
         if event:
             result = send(args.agent, default_session(), event[0], event[1], args.dry_run)
-            if result not in ('disabled', 'sent'):
+            if result not in QUIET_RESULTS:
                 print(result)
         return 0
     config = load()
@@ -199,7 +260,8 @@ def command(argv, prog='agents admin notify'):
         print('placeholders: {agent} {session} {event} {event_text} {detail} {detail_suffix}')
         return 0
     if args.action == 'test':
-        result = send('agent-utils', 'test', 'info', 'test message', args.dry_run, dict(config, enabled=True))
+        result = send('agent-utils', 'test', 'info', 'test message', args.dry_run,
+                      dict(config, enabled=True, away_after_seconds=0))
         print(result)
         return 0 if result in ('sent',) or result.startswith('would send') else 1
     if args.action == 'enable' and not valid_url(config['url']):
@@ -212,6 +274,12 @@ def command(argv, prog='agents admin notify'):
         if any(c in args.host for c in ('/', '?', '#', ' ', '\n')):
             raise ValueError('mobile-host must be a hostname or saved Mac UUID')
         config['mobile_host'] = args.host
+    elif args.action == 'away-after':
+        if not 0 <= args.seconds <= 86400:
+            raise ValueError('away-after takes 0 to 86400 seconds')
+        config['away_after_seconds'] = args.seconds
+    elif args.action == 'away-when-locked':
+        config['away_when_locked'] = args.state == 'on'
     elif args.action == 'url':
         config['url'] = args.value
     elif args.action == 'template':

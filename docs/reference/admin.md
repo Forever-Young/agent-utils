@@ -33,6 +33,8 @@ Editable settings (the `SETTINGS` registry in `agent_utils/core/settings.py`):
 | `coordinator_name` | `config.json` | name of the coordinator Claude session; a project may also set its own `coordinator_name` | `Main` |
 | `notify.enabled` | `notify.json` | bool; needs `notify.url` first | off |
 | `notify.url` | `notify.json` | ntfy URL, `https://host/topic` | empty |
+| `notify.away_after_seconds` | `notify.json` | whole seconds, 0 to 86400; 0 always sends | 120 |
+| `notify.away_when_locked` | `notify.json` | bool | on |
 | `notify.title` | `notify.json` | text template | `{session}` |
 | `notify.body` | `notify.json` | text template | `{event_text}{detail_suffix}` |
 | `snippets.variables.NAME` | `snippets.json` | text, the value of `{{NAME}}` in instruction snippets | empty |
@@ -854,6 +856,15 @@ agents admin notify template --title '{session}' --body '{event_text}{detail_suf
 | --- | --- |
 | `--title TEMPLATE` | Title template. Default `{session}`. |
 | `--body TEMPLATE` | Body template. Default `{event_text}{detail_suffix}`. |
+
+`agents admin notify away-after SECONDS` sets `away_after_seconds` (0 to 86400, default 120).
+On macOS `send` and `hook` push nothing while the last keyboard or mouse input (read from
+`ioreg`, `HIDIdleTime`, any app) is newer than that; 0 turns the check off, `test` ignores it,
+and an unreadable idle time never suppresses a push. `--dry-run send` prints `would skip: at the
+computer` in that case.
+
+`agents admin notify away-when-locked on|off` sets `away_when_locked` (default on): a locked screen
+(`ioreg`, `IOConsoleLocked`) counts as away, so the push is sent even if the last input was recent.
 
 `agents admin notify mobile-host HOST` sets the saved Mac hostname (or saved Mac UUID)
 used by the mobile app. When it is set and AGTERM_SESSION_ID is available, ntfy messages

@@ -30,7 +30,7 @@ installed hooks keep working.
 | `zellij-layouts/NAME.kdl` | you; `agents zellij layout new` | Your Zellij tab layouts. | No: they are yours. |
 | `config.json.backup-STAMP` | the commands above, before each change | Previous versions; `agents admin config undo config` restores the newest. | Yes. |
 | `config.json.lock` | the commands above | Write lock. | Yes, when no command runs. |
-| `notify.json` | `agents admin notify ...`, `agents admin config set` | Push notification switch, ntfy URL and templates. Absent = off. | Yes: notifications turn off. |
+| `notify.json` | `agents admin notify ...`, `agents admin config set` | Push notification switch, ntfy URL, templates, the idle time before a push (`away_after_seconds`) and the locked-screen switch (`away_when_locked`). Absent = off. | Yes: notifications turn off. |
 | `snippets.json` | you; `agents admin config set` | Variables for instruction snippets. | Yes: snippets lose their variable values. |
 | `skills.json` | `agents admin skills ...` | Skills link policy per agent. Backups `skills.json.backup-STAMP` beside it. | Yes: the default policy applies. |
 | `instructions/` | you; `agents admin instructions compose` | Shared rule sources: `common.md` and per-agent parts such as `codex.md`. | No while `agents admin instructions apply` targets link to it. |

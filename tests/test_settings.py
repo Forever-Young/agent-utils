@@ -98,6 +98,15 @@ class SettingsTests(unittest.TestCase):
         from agent_utils.core import notify
         loaded = notify.load()
         self.assertTrue(loaded['enabled']); self.assertEqual(loaded['url'], 'https://ntfy.example/topic')
+        self.assertEqual(loaded['away_after_seconds'], 120)
+        self.assertTrue(loaded['away_when_locked'])
+        self.cmd('set', 'notify.away_when_locked', 'off', '--yes')
+        self.assertFalse(notify.load()['away_when_locked'])
+        self.cmd('set', 'notify.away_after_seconds', '300', '--yes')
+        self.assertEqual(notify.load()['away_after_seconds'], 300)
+        for bad in ('-1', 'soon', '86401', '1.5'):
+            with self.assertRaises(ValueError):
+                self.cmd('set', 'notify.away_after_seconds', bad, '--yes')
 
     def test_actions_preview_unless_yes(self):
         calls = []

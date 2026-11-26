@@ -92,7 +92,7 @@ def read(file_id):
 # ---------------------------------------------------------------- schema
 
 class Setting:
-    """kind: bool, choice, text, url, agents (comma list), args (shell words).
+    """kind: bool, int (seconds), choice, text, url, agents (comma list), args (shell words).
     A key ending in `.*` is a family; the last part is an agent or a variable name."""
     def __init__(self, key, section, file, path, kind, default, help, choices=None):
         self.key, self.section, self.file, self.path = key, section, file, tuple(path)
@@ -120,6 +120,14 @@ class Setting:
             if value is None:
                 raise ValueError('%s takes on or off' % self.key)
             return value
+        if self.kind == 'int':
+            try:
+                value = int(text.strip())
+            except ValueError:
+                raise ValueError('%s takes a whole number of seconds' % self.key) from None
+            if not 0 <= value <= 86400:
+                raise ValueError('%s takes 0 to 86400' % self.key)
+            return value
         if self.kind == 'choice':
             if text not in self.choices:
                 raise ValueError('%s takes one of: %s' % (self.key, ', '.join(self.choices)))
@@ -139,6 +147,8 @@ class Setting:
     def show(self, value):
         if self.kind == 'bool':
             return 'on' if value else 'off'
+        if self.kind == 'int':
+            return str(value)
         if self.kind == 'agents':
             return ','.join(value) or '(none)'
         if self.kind == 'args':
@@ -167,6 +177,10 @@ SETTINGS = [
             'Name of the coordinator Claude session (row title and --name)'),
     Setting('notify.enabled', 'notify', 'notify', ['enabled'], 'bool', False, 'Send agent notifications'),
     Setting('notify.url', 'notify', 'notify', ['url'], 'url', '', 'ntfy URL, https://host/topic'),
+    Setting('notify.away_after_seconds', 'notify', 'notify', ['away_after_seconds'], 'int', 120,
+            'Seconds without keyboard or mouse input before a push is sent (0: always send; macOS)'),
+    Setting('notify.away_when_locked', 'notify', 'notify', ['away_when_locked'], 'bool', True,
+            'Count a locked screen as away and send the push at once (macOS)'),
     Setting('notify.title', 'notify', 'notify', ['title'], 'text', '{session}', 'Notification title template'),
     Setting('notify.body', 'notify', 'notify', ['body'], 'text', '{event_text}{detail_suffix}',
             'Notification body template'),
