@@ -62,6 +62,7 @@ class BrewTests(unittest.TestCase):
         self.assertEqual(out.count('\n  sha256 "'), 1)
         self.assertIn('  sha256 "%s"\n' % ('b' * 64), out)
         self.assertNotIn('revision:', out)
+        self.assertNotIn('\n  version ', out)  # brew audit: redundant with the URL
         self.assertEqual(module.version_of(root), '0.1.1')
 
     def test_installed_copy_installs_from_recorded_source(self):

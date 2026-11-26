@@ -1,5 +1,5 @@
 # Formula for the Forever-Young/tap tap. It installs the tarball of a GitHub release
-# (scripts/release.py writes url, version and sha256 here and in the tap). Textual and its
+# (scripts/release.py writes url and sha256 here and in the tap). Textual and its
 # dependencies are pinned like pyproject.toml.
 class AgentUtils < Formula
   include Language::Python::Virtualenv
@@ -7,7 +7,6 @@ class AgentUtils < Formula
   desc "Utilities for coding agents: agterm project launch, skills, instructions"
   homepage "https://github.com/Forever-Young/agent-utils"
   url "https://github.com/Forever-Young/agent-utils/releases/download/v0.1.1/agent-utils-0.1.1.tar.gz"
-  version "0.1.1"
   sha256 "b3929f6a8c0c43387e9c21c448044f3642345231b9c2edb50d179e629d1ce3f4"
   license "MIT"
 

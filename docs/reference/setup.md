@@ -319,7 +319,7 @@ local/agent-utils`; config, state and history stay. Remove `~/.bin/agents` first
 Cuts a release of the repository it runs in. It archives the committed `HEAD`
 (`git archive`) into `dist/agent-utils-VERSION.tar.gz`, where VERSION is `version` in
 `pyproject.toml`, creates the GitHub release `vVERSION` with that file as its asset
-(`gh release create`, which also creates the tag), and writes `url`, `version` and `sha256`
+(`gh release create`, which also creates the tag), and writes `url` and `sha256` (no `version` line: brew reads it from the URL and audit flags a repeat)
 into `packaging/homebrew/agent-utils-tap.rb` and into the tap checkout's
 `Formula/agent-utils.rb`. The formula therefore installs exactly the uploaded file. The tap
 is not committed or pushed; review it, commit and push yourself.

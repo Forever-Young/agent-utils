@@ -6,7 +6,7 @@ Preview by default. With --apply it
   2. tags vVERSION on HEAD and creates the GitHub release with that tarball as its asset
      (`gh release create`; the tag is pushed by gh). The release notes are the VERSION section of
      CHANGELOG.md plus a link comparing it with the previous release; no such section, no release,
-  3. rewrites url, version and sha256 in packaging/homebrew/agent-utils-tap.rb and in the tap
+  3. rewrites url and sha256 in packaging/homebrew/agent-utils-tap.rb and in the tap
      checkout's Formula/agent-utils.rb. The tap is not committed or pushed; review it first.
 The formula points at the uploaded asset, so its checksum is the checksum of the file users download.
 """
@@ -60,11 +60,11 @@ def asset_url(version, repo=REPO):
 
 
 def render(text, url, version, sha):
-    """Point a formula at a release tarball; also accepts the older git-revision form."""
+    """Point a formula at a release tarball (url, then sha256). A `version` line is removed: it repeats the URL
+    and brew audit flags it. Also accepts the older git-revision form. `version` is kept for callers."""
     text = re.sub(r'  url "[^"]*"(?:,\n\s+revision: "[^"]*")?\n', '  url "%s"\n' % url, text, count=1)
-    text = re.sub(r'  version "[^"]*"\n', '  version "%s"\n' % version, text, count=1)
-    text = re.sub(r'^  sha256 "[^"]*"\n', '', text, count=1, flags=re.M)
-    return text.replace('  version "%s"\n' % version, '  version "%s"\n  sha256 "%s"\n' % (version, sha), 1)
+    text = re.sub(r'^  (?:version|sha256) "[^"]*"\n', '', text, flags=re.M)  # brew reads the version from the URL
+    return text.replace('  url "%s"\n' % url, '  url "%s"\n  sha256 "%s"\n' % (url, sha), 1)
 
 
 def build(version, out_dir, root=ROOT):
