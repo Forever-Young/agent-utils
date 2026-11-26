@@ -60,6 +60,20 @@ class RunTests(unittest.TestCase):
                 zellij.run_session(str(self.config), zellij.Zellij(env=self.env))
         call.assert_not_called()
 
+    def test_resurrect_attaches_exited_session_and_runs_commands(self):
+        with patch.object(zellij, 'list_sessions', return_value={'mobile':'exited'}), patch('subprocess.call', return_value=0) as call:
+            zellij.run_session(str(self.config), zellij.Zellij(env=self.env), resurrect=True)
+        self.assertEqual(call.call_args.args[0], ['zellij', '--config', str(self.ui), 'attach', '--force-run-commands', 'mobile'])
+
+    def test_fresh_deletes_session_then_creates_it(self):
+        z = zellij.Zellij(env=self.env)
+        with patch.object(zellij, 'list_sessions', return_value={'mobile':'exited'}), \
+             patch('subprocess.run') as run, patch('subprocess.call', return_value=0) as call:
+            run.return_value.returncode = 0
+            zellij.run_session(str(self.config), z, fresh=True)
+        self.assertEqual(run.call_args.args[0], ['zellij', 'delete-session', '--force', 'mobile'])
+        self.assertEqual(call.call_args.args[0][-3:], ['attach', 'mobile', '--create'])
+
     def test_custom_config_is_separate_from_project_config(self):
         argv = zellij.attach_argv('example', self.env, str(self.config))
         self.assertEqual(argv[2], str(self.ui))

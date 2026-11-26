@@ -303,7 +303,7 @@ def target(z, window, project):
     state = list_sessions(z.env).get(name)
     if state is None:return tz, True
     if state == 'exited':
-        raise ZellijError('Zellij session %s has exited. Resurrect it first: zellij attach %s' % (name, name))
+        raise ZellijError('Zellij session %s has exited. Resurrect it first: agents zellij run --resurrect --session %s' % (name, name))
     if mode == 'project' and name not in known_sessions():
         raise ZellijError('A session named %s exists but was not created by agents; not adding tabs to it. '
                           'Set "zellij": {"session": "%s"} on the project to use it anyway.' % (name, name))
@@ -327,15 +327,16 @@ def ui_config(config=None, env=None):
     return str(path)
 
 
-def attach_argv(name, env=None, config=None):
+def attach_argv(name, env=None, config=None, run_commands=False):
     env = os.environ if env is None else env
     argv = [binary(env)]
     path = ui_config(config, env)
     if path:argv += ['--config', path]
-    return argv + ['attach', name]
+    # --force-run-commands: a resurrected session otherwise leaves every command pane suspended until ENTER.
+    return argv + ['attach'] + (['--force-run-commands'] if run_commands else []) + [name]
 
 
-def run_session(config, z):
+def run_session(config, z, resurrect=False, fresh=False):
     """Start the launcher workspace once, or attach without changing existing tabs."""
     from ..cli import load
     from .zellij_layouts import command_pane, indent
@@ -344,13 +345,24 @@ def run_session(config, z):
     if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', name) or name.startswith('-'):
         raise ZellijError('Use a session name with letters, digits, dot, dash or underscore')
     state = list_sessions(z.env).get(name)
-    if state == 'exited':
-        raise ZellijError('Session has exited; resurrect it explicitly with zellij attach ' + name)
+    if fresh and state is not None:
+        if in_zellij(z.env):raise ZellijError('Run --fresh from a plain shell, outside the session')
+        if z.dry:print('zellij delete-session --force ' + name)
+        else:
+            try:done = subprocess.run([binary(z.env), 'delete-session', '--force', name], stdin=subprocess.DEVNULL,
+                                      capture_output=True, text=True, timeout=20)
+            except (OSError, subprocess.SubprocessError) as exc:raise ZellijError('zellij failed: %s' % exc)
+            if done.returncode:raise ZellijError('zellij delete-session: ' + ((done.stderr or done.stdout).strip()[:300] or 'failed'))
+        state = None
+    if state == 'exited' and not resurrect:
+        suffix = '' if name == 'agents' else ' --session ' + name
+        raise ZellijError('Session %s has exited. Bring it back with: agents zellij run --resurrect%s, '
+                          'or start from scratch with: agents zellij run --fresh%s' % (name, suffix, suffix))
     if in_zellij(z.env) and name == z.env.get('ZELLIJ_SESSION_NAME'):
         return launcher(config, z)
     if in_zellij(z.env):
         raise ZellijError('Run this from a plain shell; use the Zellij session manager to switch sessions')
-    argv = attach_argv(name, z.env, config)
+    argv = attach_argv(name, z.env, config, run_commands=state == 'exited')
     if state is None:
         # Explicit argv, with no shell interpolation. Every new tab gets the chooser.
         command = [sys.executable, str(Path(__file__).with_name('zellij_launcher.py')),
@@ -693,11 +705,13 @@ def command(argv):
     p.add_argument('--rename', action='store_true', help='adopt: rename the tab to "Project: agent"')
     p.add_argument('--quiet', action='store_true', help='adopt --self: print nothing, exit 0 (for hooks)')
     p.add_argument('--force', action='store_true', help='close: also close a tab whose provider still runs')
+    p.add_argument('--resurrect', action='store_true', help='run: bring back an exited session and start its tabs again')
+    p.add_argument('--fresh', action='store_true', help='run: kill and delete the session (live or exited), then start it from scratch')
     p.add_argument('--json', action='store_true')
     a = p.parse_args(argv)
     z = Zellij(a.session, a.dry_run, config=a.config)
     if a.operation is None:a.operation = 'menu' if in_zellij(z.env) else 'run'
-    if a.operation == 'run':return run_session(a.config, z)
+    if a.operation == 'run':return run_session(a.config, z, a.resurrect, a.fresh)
     if a.operation == 'launcher':return launcher(a.config, z)
     if a.operation == 'doctor':return doctor(z)
     if a.operation == 'layout':return layout_command(a)

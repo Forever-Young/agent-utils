@@ -3,6 +3,18 @@
 All notable changes to this project are listed here, newest first. Each release's section is
 used as the notes of its GitHub release (`scripts/release.py`).
 
+## [0.1.3] - 2026-11-26
+
+### Added
+- `agents zellij run --resurrect` brings back an exited session and starts its tabs again;
+  `--fresh` kills and deletes the session (live or exited) and starts a new one. The exited-session
+  error names both commands.
+- `agents configure` Projects section: `sync-windows` runs `agents agterm bootstrap` to create
+  missing agterm windows and workspaces for enabled projects.
+
+### Changed
+- The hotkey cheatsheet action moved from the Projects section to agterm settings.
+
 ## [0.1.2] - 2026-11-26
 
 ### Added

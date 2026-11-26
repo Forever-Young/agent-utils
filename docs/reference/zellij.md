@@ -34,6 +34,8 @@ Inside a Zellij pane a bare `agents` runs `agents zellij menu` (see the context 
 | `--quiet` | `adopt --self`: print nothing and exit 0 (hooks). |
 | `--force` | `close`: also close a tab whose provider process is still running. |
 | `--json` | `list`: machine-readable rows. |
+| `--resurrect` | `run`: bring back an exited session and start its tabs again. |
+| `--fresh` | `run`: kill and delete the session, then start it from scratch. |
 | `--dry-run` | Print the `zellij` commands that would change anything. Read-only queries still run. |
 
 ## Commands
@@ -43,7 +45,14 @@ Inside a Zellij pane a bare `agents` runs `agents zellij menu` (see the context 
 From a plain SSH shell, `agents zellij` defaults to `run`: start or attach to the
 configured session, default `agents`. Use `agents zellij run --session mobile` to
 choose another name. Existing live sessions are attached without adding or replacing
-tabs. Exited sessions require explicit resurrection. Inside Zellij, bare `agents
+tabs, and keep the configuration they were started with: the Zellij config file
+and layout apply when a session is created, so to pick up a changed
+`zellij.config_path` or `ssh_config_path`, end the session and run again. An exited
+session is refused with the exact command to bring it back: `agents zellij run
+--resurrect` (add `--session NAME`) attaches it and starts its tabs again; without
+that flag Zellij would leave every restored pane suspended until ENTER. To discard the
+session instead, `agents zellij run --fresh` kills and deletes it (live or exited, so
+running agents in it stop) and starts a new one with the launcher tab. Inside Zellij, bare `agents
 zellij` still defaults to `menu`; `run` in the current session opens the tab chooser.
 
 A new session starts with a chooser tab. Every new tab (Ctrl+t, then n with default

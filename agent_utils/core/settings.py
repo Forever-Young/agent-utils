@@ -404,9 +404,10 @@ class Action:
 
 
 ACTIONS = [
+    Action('sync-windows', 'projects', 'Create missing agterm windows and workspaces for enabled projects (no agent starts)', ['agterm', 'bootstrap'], direct=True),
     Action('zellij-mobile-install', 'projects', 'Install the contributed mobile Zellij config', ['zellij_mobile'], '--apply', module=True),
     Action('zellij-mobile-remove', 'projects', 'Remove an unchanged contributed mobile Zellij config', ['zellij_mobile', '--remove'], '--apply', module=True),
-    Action('cheatsheet', 'projects', 'Write the agterm hotkey cheatsheet and open it', ['agterm', 'cheatsheet', '--open'], direct=True),
+    Action('cheatsheet', 'placement', 'Write the agterm hotkey cheatsheet and open it', ['agterm', 'cheatsheet', '--open'], direct=True),
     Action('skills-status', 'skills', 'Skills store and links per agent', ['admin', 'skills', 'status']),
     Action('skills-sync', 'skills', 'Adopt copies, link skills per policy', ['admin', 'skills', 'sync'], '--apply'),
     Action('skills-check', 'skills', 'Check skills for drift', ['admin', 'skills', 'check']),

@@ -128,6 +128,7 @@ agents admin config actions
 | Action | Runs | Apply flag added by `--yes` |
 | --- | --- | --- |
 | `cheatsheet` | `agents agterm cheatsheet --open` (see [agterm.md](agterm.md#agents-agterm-cheatsheet)) | acts at once; `run` refuses it without `--yes` |
+| `sync-windows` | `agents agterm bootstrap` (see [agterm.md](agterm.md#agents-agterm-bootstrap)) | acts at once; `run` refuses it without `--yes` |
 | `skills-status` | `agents admin skills status` | none, read-only |
 | `skills-sync` | `agents admin skills sync` | `--apply` |
 | `skills-check` | `agents admin skills check` (basic check) | none, read-only |
