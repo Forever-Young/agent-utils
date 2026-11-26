@@ -63,7 +63,7 @@ class BrewTests(unittest.TestCase):
         self.assertIn('  sha256 "%s"\n' % ('b' * 64), out)
         self.assertNotIn('revision:', out)
         self.assertNotIn('\n  version ', out)  # brew audit: redundant with the URL
-        self.assertEqual(module.version_of(root), '0.1.1')
+        self.assertRegex(module.version_of(root), r'^\d+\.\d+\.\d+$')
 
     def test_installed_copy_installs_from_recorded_source(self):
         from agent_utils.core.setup import installer

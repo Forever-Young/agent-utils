@@ -3,6 +3,14 @@
 All notable changes to this project are listed here, newest first. Each release's section is
 used as the notes of its GitHub release (`scripts/release.py`).
 
+## [0.1.2] - 2026-11-26
+
+### Added
+- Snippet `inbox-agterm-companion` (on by default): inside agterm, an agent shows each Inbox
+  thread it waits on as a companion page of its own session.
+- Snippet `inbox-links` (off by default): agents always give the Inbox thread link, preferring
+  a stable address that your local instructions name.
+
 ## [0.1.1] - 2026-11-26
 
 ### Added

@@ -67,10 +67,11 @@ then runs `agents admin instructions apply --yes`; `--no-sync` skips that last s
 | Snippet | Default |
 | --- | --- |
 | `inbox-policy`: what goes to the Plannotator Inbox | on |
+| `inbox-agterm-companion`: show Inbox threads as an agterm companion page | on |
 | `session-naming`: keep agterm session names useful | on |
 | `shared-rules-source`: edit the sources, then apply | on |
 | `confirmation-questions`: make blocking questions stand out | on |
-| `privacy-in-repos`, `commit-conventions`, `untrusted-content` | off |
+| `inbox-links`, `privacy-in-repos`, `commit-conventions`, `untrusted-content` | off |
 
 `agents configure` lists every snippet (bundled or `(custom)`, on or off), shows its text before
 you turn it on, previews the diff, and can write a new custom snippet for you.
@@ -83,7 +84,9 @@ These ship with agent-utils in [`agent_utils/core/snippet_library/`](../../agent
 | --- | --- | --- |
 | [Commit conventions](../../agent_utils/core/snippet_library/commit-conventions.md) | Run the checks first, one focused change per commit, say why in the body, keep other people's uncommitted work. | off |
 | [Visible confirmation questions](../../agent_utils/core/snippet_library/confirmation-questions.md) | A question that blocks work goes on its own last line, starts with a warning sign and is bold. | on |
+| [Open Inbox threads in agterm](../../agent_utils/core/snippet_library/inbox-agterm-companion.md) | Inside agterm, show each Inbox thread you wait on as a companion page of your own session. | on |
 | [Plannotator Inbox policy](../../agent_utils/core/snippet_library/inbox-policy.md) | Questions, long reports and long code go to the Plannotator Inbox; no blocking review sessions. | on |
+| [Inbox links](../../agent_utils/core/snippet_library/inbox-links.md) | Always give the Inbox thread link in the chat, preferring a stable address your local instructions name. | off |
 | [Privacy in repositories](../../agent_utils/core/snippet_library/privacy-in-repos.md) | No credentials, user paths, customer names or real transcripts in source, tests or history; no pushing unless asked. | off |
 | [agterm session names](../../agent_utils/core/snippet_library/session-naming.md) | Topic-first sidebar names, renamed when the topic or phase changes. | on |
 | [Where global agent rules live](../../agent_utils/core/snippet_library/shared-rules-source.md) | Edit the sources in `~/.config/agent-utils/instructions`, then apply and check status. | on |

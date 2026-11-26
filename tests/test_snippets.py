@@ -21,9 +21,9 @@ class SnippetTests(unittest.TestCase):
 
     def test_bundled_library_renders_with_its_variables(self):
         lib = sn.library([sn.LIBRARY])
-        self.assertTrue({'inbox-policy', 'session-naming', 'shared-rules-source', 'privacy-in-repos', 'commit-conventions', 'untrusted-content', 'confirmation-questions'} <= set(lib))
+        self.assertTrue({'inbox-policy', 'session-naming', 'shared-rules-source', 'privacy-in-repos', 'commit-conventions', 'untrusted-content', 'confirmation-questions', 'inbox-links', 'inbox-agterm-companion'} <= set(lib))
         for snip in lib.values(): sn.render(snip, {})
-        self.assertEqual([s for s in lib if lib[s]['default']], ['confirmation-questions', 'inbox-policy', 'session-naming', 'shared-rules-source'])
+        self.assertEqual([s for s in lib if lib[s]['default']], ['confirmation-questions', 'inbox-agterm-companion', 'inbox-policy', 'session-naming', 'shared-rules-source'])
 
     def test_inbox_policy_sends_signoffs_to_the_inbox(self):
         # Plan 14: plans and code reviews go to the Inbox; a blocking review only on request.
