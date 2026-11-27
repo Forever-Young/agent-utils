@@ -76,7 +76,7 @@ Used only by `agents admin project|settings|inbox`, see [admin.md](admin.md):
 `--launch-args`, `--agent-order`, `--auto-detect`, `--hide-agent`, `--show-agent`,
 `--enabled-agent`, `--thread`, `--launch`, `--answered`, `--fix`, `--subject`,
 `--message`, `--question`, `--author-host`, `--clear`, `--once`, `--interval`,
-`--idle-seconds`, `--position`, `--send`.
+`--idle-seconds`, `--position`, `--send`, `--add-root`, `--remove-root`.
 
 "Launch commands" below means `new`, `resume`, `task` and the launch that `menu`
 ends in. A project selection that matches more than one project opens a Project

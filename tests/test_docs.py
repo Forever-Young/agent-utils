@@ -78,7 +78,7 @@ AGTERM_OPERATIONS = {
                 'status', 'finish', 'provider-archive', 'provider-unarchive', 'provider-delete'],
     'task': ['bind', 'rename'],
     'restore': ['sync', 'snapshot', 'plan', 'pin'],
-    'project': ['add', 'edit', 'enable', 'disable', 'move', 'order'],
+    'project': ['add', 'edit', 'enable', 'disable', 'move', 'order', 'push-order', 'pull-order'],
     'settings': ['list'],
     'inbox': ['doctor', 'threads', 'dispatch', 'launches', 'adopt', 'rename', 'subject', 'reopen',
               'author', 'withdraw', 'move', 'relay'],

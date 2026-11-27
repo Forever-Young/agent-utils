@@ -131,3 +131,52 @@ class ConfigureAppTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class RootFlowTests(unittest.TestCase):
+    """Drive the project flow generator directly (no Textual needed)."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name)
+        patcher = mock.patch.dict(os.environ, {'HOME': str(base), 'XDG_CONFIG_HOME': str(base/'config'), 'XDG_STATE_HOME': str(base/'state')})
+        patcher.start(); self.addCleanup(patcher.stop)
+        self.a, self.b = str(base/'a'), str(base/'b')
+        self.cfg = base/'config/agent-utils/config.json'
+        self.cfg.parent.mkdir(parents=True)
+        self.cfg.write_text(json.dumps({'version': 1, 'windows': [{'name': 'Main', 'default_agent': 'codex', 'projects': [
+            {'id': 'demo', 'name': 'Demo', 'roots': [self.a]}]}]}))
+
+    def run_flow(self, op, value=None):
+        from agent_utils.core.configure_flows import target_flow
+        gen = target_flow('project', 'demo')()
+        step, answers = next(gen), [op, value, True, True]
+        shown = []
+        try:
+            while True:
+                shown.append(step)
+                step = gen.send(answers.pop(0) if step[0] in ('choice', 'text', 'confirm') else None)
+        except StopIteration:
+            pass
+        return shown
+
+    def roots(self):
+        return json.loads(self.cfg.read_text())['windows'][0]['projects'][0]['roots']
+
+    def test_add_then_remove_root(self):
+        self.run_flow('add_root', self.b)
+        self.assertEqual(self.roots(), [self.a, str(Path(self.b).resolve())])
+        self.run_flow('remove_root', str(Path(self.b).resolve()))
+        self.assertEqual(self.roots(), [self.a])
+
+    def test_last_root_cannot_be_removed(self):
+        shown = self.run_flow('remove_root')
+        self.assertTrue(any(s[0] == 'say' and 'at least one' in s[1] for s in shown))
+        self.assertEqual(self.roots(), [self.a])
+
+    def test_move_project_down_in_window_list(self):
+        data = json.loads(self.cfg.read_text())
+        data['windows'][0]['projects'].append({'id': 'other', 'name': 'Other', 'roots': [self.b]})
+        self.cfg.write_text(json.dumps(data))
+        self.run_flow('down', True)
+        ids = [p['id'] for p in json.loads(self.cfg.read_text())['windows'][0]['projects']]
+        self.assertEqual(ids, ['other', 'demo'])

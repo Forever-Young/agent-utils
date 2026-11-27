@@ -231,18 +231,24 @@ existing agterm rows.
 
 ```sh
 agents admin project add --project example --name Example --window Work --agent claude --root ~/Projects/example --send
-agents admin project edit --project example --root ~/Projects/example --root ~/Projects/shared
-agents admin project order --project hobby --position 1
+agents admin project edit --project example --add-root ~/Projects/shared
+agents admin project edit --project example --remove-root ~/Projects/shared
+agents admin project edit --project example --root ~/Projects/example --root ~/Projects/other   # replaces the whole list
+agents admin project order --project hobby --position 1 --send   # --send also reorders agterm
+agents admin project push-order [--window Work]   # config order -> agterm sidebar
+agents admin project pull-order [--window Work]   # agterm sidebar order -> config
 ```
 
 | Command | What it does |
 | --- | --- |
 | `agents admin project add` | New project. Needs `--project`, `--window` and at least one `--root`; a new window also needs `--agent` as its default provider. Fails when the id exists. |
-| `agents admin project edit` | Changes `--name`, replaces the roots with the given `--root` list, sets `--agent` as the project default. |
+| `agents admin project edit` | Changes `--name`, the roots (`--add-root` / `--remove-root` change single roots; `--root` replaces the whole list) and `--agent` as the project default. |
 | `agents admin project enable` | Sets `"enabled": true`. |
 | `agents admin project disable` | Sets `"enabled": false`; the project leaves menus and bootstrap. |
 | `agents admin project move` | Moves the entry to the existing window named by `--window`. |
-| `agents admin project order` | Moves the entry to `--position` within its window. |
+| `agents admin project order` | Moves the entry to `--position` within its window. With `--send`, the window's workspaces in agterm are reordered too (as `push-order`). |
+| `agents admin project push-order` | Reorders the agterm workspaces of each window (or only `--window`) to the configured project order. Uses `agtermctl workspace move`; workspaces that are not configured projects keep their slots. Windows that are not open are skipped. `--dry-run` prints the commands. |
+| `agents admin project pull-order` | The reverse: reorders each window's configured projects to the current agterm sidebar order. Configured projects without a workspace keep their slots. Writes the config with a backup; `--dry-run` prints the result. |
 
 | Option | Meaning |
 | --- | --- |
@@ -250,9 +256,12 @@ agents admin project order --project hobby --position 1
 | `--name NAME` | Display name. Default for `add`: the id. |
 | `--window NAME` | Window for `add` (created when missing) or the destination for `move`. |
 | `--agent AGENT` | Default provider: the window default for a new window, else the project's `default_agent`. |
-| `--root PATH` | Project root, repeatable, stored as an absolute path. The first root is the working folder. |
+| `--root PATH` | Project root, repeatable, stored as an absolute path. The first root is the working folder. On `edit`, **replaces the whole list** with the given roots: list every root you want to keep, or use `--add-root` / `--remove-root`. |
+| `--add-root PATH` | `edit` only, repeatable. Appends a root after the existing ones. Fails when it is already a root. |
+| `--remove-root PATH` | `edit` only, repeatable. Removes a root. Fails when it is not a root or would leave the project without one. Cannot be combined with `--root`. |
 | `--position N` | One-based place in the window's project list. Required for `order`; also accepted by the other operations. |
-| `--send` | After the edit, run `agents agterm bootstrap --project ID`: create that enabled project's window and workspace without starting a model. |
+| `--window NAME` | Also limits `push-order` and `pull-order` to one window. |
+| `--send` | The edit is always written (use `--dry-run` to preview). `--send` then runs `agents agterm bootstrap --project ID`: create that enabled project's window and workspace without starting a model. |
 
 ### `agents admin settings`
 

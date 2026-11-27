@@ -3,6 +3,17 @@
 All notable changes to this project are listed here, newest first. Each release's section is
 used as the notes of its GitHub release (`scripts/release.py`).
 
+## [0.1.4] - 2026-11-27
+
+### Added
+- `agents admin project edit --add-root PATH` and `--remove-root PATH` change a single root;
+  `--root` still replaces the whole list (now stated in the docs). A project keeps at least one root.
+- `agents admin project push-order` reorders the agterm sidebar to the configured project order,
+  `pull-order` copies the sidebar order back into the config, and `project order --send` pushes
+  after a change. Workspaces that are not configured projects keep their slots.
+- `agents configure` Projects section: add, remove or replace root folders, move a project up or
+  down, and apply or read the order of a window's projects to or from agterm.
+
 ## [0.1.3] - 2026-11-26
 
 ### Added

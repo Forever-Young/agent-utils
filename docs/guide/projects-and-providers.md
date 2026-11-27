@@ -25,11 +25,23 @@ agents agterm list                                    # what is configured
 Change projects later:
 
 ```sh
-agents admin project edit --project example --root ~/Projects/example --root ~/Projects/shared
+agents admin project edit --project example --add-root ~/Projects/shared      # one more folder
+agents admin project edit --project example --remove-root ~/Projects/shared
 agents admin project order --project hobby --position 1      # one-based, within its window
+agents admin project push-order                              # config order -> agterm sidebar
+agents admin project pull-order                              # agterm sidebar order -> config (after dragging)
 agents admin project move --project hobby --window Work      # to another configured window
 agents admin project disable --project hobby                 # enable --send brings it back
 ```
+
+`--root` on `edit` replaces the whole list of roots; `--add-root` and `--remove-root`
+change one root and keep the rest. `agents configure` offers the same under
+Projects and windows. A project always keeps at least one root.
+
+Order is not synced automatically. agterm can reorder workspaces with
+`agtermctl workspace move` (up, down, top, bottom) as well as by dragging, which is how
+`push-order` works; `pull-order` copies what you arranged by dragging back into the
+configuration. `agents configure` has the same actions on a project or window.
 
 Renaming or moving a project in the configuration does not rename or move existing
 agterm rows; old workspaces stay. `agents agterm bootstrap` creates missing workspaces

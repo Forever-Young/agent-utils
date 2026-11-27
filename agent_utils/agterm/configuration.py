@@ -28,7 +28,85 @@ def edit_config(path, dry=False):
         atomic_write(path,data)
 
 
+def change_roots(project,replace=(),add=(),remove=()):
+    """Edit project['roots'] in place: replace them all, or add and remove single roots."""
+    norm=lambda r:str(Path(r).expanduser().resolve())
+    if replace and (add or remove):raise ValueError('--root replaces the whole list; do not combine it with --add-root or --remove-root')
+    if replace:project['roots']=[norm(r) for r in replace];return
+    roots=list(project.get('roots',[]))
+    for r in remove:
+        if norm(r) not in roots:raise ValueError('Not a root of this project: '+norm(r))
+        roots.remove(norm(r))
+    for r in add:
+        if norm(r) in roots:raise ValueError('Already a root of this project: '+norm(r))
+        roots.append(norm(r))
+    if not roots:raise ValueError('A project needs at least one root')
+    project['roots']=roots
+
+
+def slot_order(current,wanted):
+    """`current` with the entries also in `wanted` refilled in `wanted` order; others keep their slots."""
+    present=[n for n in wanted if n in current]
+    it=iter(present)
+    return [next(it) if n in present else n for n in current]
+
+
+def _tree(ag,window):
+    """(window id, named workspaces in sidebar order) of an existing window, else (None, [])."""
+    from ..cli import Agterm
+    items=Agterm().call('window','list',json_result=True)
+    if isinstance(items,dict):items=items.get('windows',[])
+    matches=[w for w in items if w.get('name')==window and not w.get('closed')]
+    if len(matches)>1:raise ValueError('Ambiguous window name: '+window)
+    if not matches:return None,[]
+    wid=matches[0]['id']
+    tree=Agterm().call('tree','--window',wid,json_result=True) or {}
+    tree=tree.get('tree',tree)
+    return wid,[(w['name'],w['id']) for w in tree.get('workspaces',[]) if w.get('name')]
+
+
+def push_order(path,dry=False,window=None):
+    """Reorder agterm workspaces to the configured project order; other workspaces keep their slots."""
+    from ..cli import Agterm,load
+    ag=Agterm(dry)
+    for w in load(Path(path).expanduser())['windows']:
+        if window and w['name']!=window:continue
+        wid,rows=_tree(ag,w['name'])
+        if wid is None:print('Window %s is not open in agterm; skipped'%w['name']);continue
+        names=[n for n,_ in rows];ids=dict(rows)
+        target=slot_order(names,[p['name'] for p in w.get('projects',[])])
+        sim=list(names)
+        for i,name in enumerate(target):
+            while sim.index(name)>i:
+                ag.call('workspace','move','--to','up','--target',ids[name],'--window',wid)
+                j=sim.index(name);sim[j-1],sim[j]=sim[j],sim[j-1]
+        if sim==names:print('%s: already in order'%w['name']);continue
+        if not dry:
+            after=[n for n,_ in _tree(ag,w['name'])[1]]
+            if after!=target:raise ValueError('%s: agterm order is now %s, expected %s'%(w['name'],after,target))
+        print('%s: %s'%(w['name'],', '.join(target)))
+
+
+def pull_order(path,dry=False,window=None):
+    """Reorder each window's configured projects to match the agterm sidebar order."""
+    from ..cli import Agterm
+    with edit_config(path,dry) as data:
+        for w in data['windows']:
+            if window and w['name']!=window:continue
+            pull_window_order(w)
+
+
+def pull_window_order(w):
+    wid,rows=_tree(None,w['name'])
+    if wid is None:print('Window %s is not open in agterm; skipped'%w['name']);return
+    projects=w.get('projects',[]);by_name={p['name']:p for p in projects}
+    order=slot_order([p['name'] for p in projects],[n for n,_ in rows])
+    w['projects']=[by_name[n] for n in order]
+
+
 def configure(args):
+    if args.operation in ('push-order','pull-order'):
+        return (push_order if args.operation=='push-order' else pull_order)(args.config,args.dry_run,args.window)
     with edit_config(args.config,args.dry_run) as data:
         windows=data['windows']
         if args.operation=='add':
@@ -50,7 +128,7 @@ def configure(args):
             window,project=matches[0]
             if args.operation=='edit':
                 if args.name:project['name']=args.name
-                if args.root:project['roots']=[str(Path(r).expanduser().resolve()) for r in args.root]
+                change_roots(project,args.root,args.add_root,args.remove_root)
                 if args.agent:project['default_agent']=args.agent
             elif args.operation in ('enable','disable'):project['enabled']=args.operation=='enable'
             elif args.operation=='move':
@@ -70,6 +148,7 @@ def configure(args):
         command=['--config',args.config]
         if args.dry_run:command+=['--dry-run']
         main(command+['bootstrap','--project',args.project])
+        if args.operation=='order':push_order(args.config,args.dry_run,window['name'])
 
 
 def provider_settings_menu(path):

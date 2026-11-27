@@ -167,22 +167,56 @@ def target_flow(kind, ident):
                ('Set the Zellij layout', 'zellij_layout'), ('Set the Zellij session', 'zellij_session')]
         if kind == 'project':
             ops = [('Disable' if target.get('enabled', True) else 'Enable', 'toggle'), ('Rename', 'name'),
-                   ('Change the root folder', 'root'), ('Move to another window', 'window')] + ops
+                   ('Add a root folder', 'add_root'), ('Remove a root folder', 'remove_root'),
+                   ('Replace all root folders', 'root'), ('Move to another window', 'window')] + ops
+        ops = ops + [('Move up in the window list', 'up'), ('Move down in the window list', 'down')] if kind == 'project' else ops
+        wname = ident if kind == 'window' else _window_of(data, ident)['name']
+        ops = ops + [('Apply the order of all projects in window %s to agterm' % wname, 'push'),
+                     ('Read the order of all projects in window %s from agterm' % wname, 'pull')]
         op = yield ('choice', '%s %s' % (kind.capitalize(), ident), ops)
         if op is None:
             return
+        if op == 'push':
+            from ..agterm.configuration import push_order
+            if (yield ('confirm', 'Reorder the workspaces of window %s in agterm to the configured order?' % wname, '')):
+                import contextlib, io
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    push_order(settings.file_path('config'), False, wname)
+                yield ('say', buf.getvalue().strip() or 'Applied to agterm')
+            return
         value = None
+        if op == 'pull':
+            from ..agterm.configuration import pull_window_order
+            yield from _commit_flow('project order of window %s' % wname,
+                                    lambda d: pull_window_order(_find(d, 'window', wname)))
+            return
+        if op in ('up', 'down'):
+            def move(d):
+                items = _window_of(d, ident)['projects']
+                i = next(n for n, p in enumerate(items) if p['id'] == ident)
+                j = i + (-1 if op == 'up' else 1)
+                if 0 <= j < len(items):
+                    items[i], items[j] = items[j], items[i]
+            yield from _commit_flow('project %s' % ident, move)
+            return
         if op == 'default_agent':
             value = yield ('choice', 'Default agent', [(a, a) for a in AGENTS])
+        elif op == 'remove_root':
+            if len(target.get('roots', [])) < 2:
+                yield ('say', 'A project needs at least one root')
+                return
+            value = yield ('choice', 'Remove which root folder', [(r, r) for r in target['roots']])
         elif op == 'window':
             value = yield ('choice', 'Move to window', [(w['name'], w['name']) for w in data['windows'] if w['name'] != _window_of(data, ident)['name']])
         elif op != 'toggle':
             hint = {'agent_order': 'Agent order, comma separated, * = the rest (- clears)',
                     'zellij_layout': 'Zellij layout: a preset or your own file (- clears)',
                     'zellij_session': 'Zellij session: shared, project or a name (- clears)',
-                    'name': 'New name', 'root': 'New root folder'}[op]
+                    'name': 'New name', 'root': 'New root folders, comma separated; replaces all current ones',
+                    'add_root': 'Root folder to add'}[op]
             current = {'agent_order': ','.join(target.get('agent_order', [])), 'name': target.get('name', ''),
-                       'root': ', '.join(target.get('roots', [])),
+                       'root': ', '.join(target.get('roots', [])), 'add_root': '',
                        'zellij_layout': (target.get('zellij') or {}).get('layout', ''),
                        'zellij_session': (target.get('zellij') or {}).get('session', '')}[op]
             value = yield ('text', hint, current)
@@ -212,7 +246,14 @@ def target_flow(kind, ident):
             elif op == 'name':
                 t['name'] = value.strip()
             elif op == 'root':
-                t['roots'] = [str(Path(r.strip()).expanduser().resolve()) for r in value.split(',') if r.strip()]
+                from ..agterm.configuration import change_roots
+                change_roots(t, [r.strip() for r in value.split(',') if r.strip()])
+            elif op == 'add_root':
+                from ..agterm.configuration import change_roots
+                change_roots(t, add=[value.strip()])
+            elif op == 'remove_root':
+                from ..agterm.configuration import change_roots
+                change_roots(t, remove=[value])
             elif op == 'window':
                 src = _window_of(d, ident)
                 src['projects'].remove(t)

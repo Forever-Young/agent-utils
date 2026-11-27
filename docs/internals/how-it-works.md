@@ -107,7 +107,7 @@ agents admin project add --project example --name Example \
 ```
 
 `add` creates a missing window configuration only with an explicit `--agent`.
-Repeat `--root` for additional roots. The config is locked, validated and backed
+Repeat `--root` for additional roots. On `edit`, `--root` replaces the whole list; `--add-root` and `--remove-root` change one root. The config is locked, validated and backed
 up before replacement. `--send` runs targeted bootstrap for that ID: create a
 missing window/workspace, reuse existing uniquely named ones and start no model.
 Then use +/Cmd-N with the startup hook, or `agents agterm menu --project example`.
