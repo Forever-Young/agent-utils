@@ -3,6 +3,18 @@
 All notable changes to this project are listed here, newest first. Each release's section is
 used as the notes of its GitHub release (`scripts/release.py`).
 
+## [0.1.5] - 2026-11-27
+
+### Added
+- `agents admin inbox adopt --auto` and the `inbox-adopt` launchd job (`agents admin config run optional
+  inbox-adopt --yes`): sessions Plannotator starts from the Inbox, for example from a phone, get an agterm
+  row without a manual `adopt`. The job runs on a timer rather than as a loop, adopts each launch once and
+  does nothing without agterm. Settings `inbox.auto_adopt` (on) and `inbox.adopt_interval_minutes` (5),
+  also in `agents configure`; `remove-inbox-adopt` removes the job.
+
+### Changed
+- The Inbox rule snippet says that a session started from the Inbox answers in that thread by default.
+
 ## [0.1.4] - 2026-11-27
 
 ### Added

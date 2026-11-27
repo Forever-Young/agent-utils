@@ -57,6 +57,7 @@ Homebrew upgrades go through [`scripts/brew-local.py`](#scriptsbrew-localpy).
 | `agent_utils.core.setup.installer` | `scripts/install.py` | `install`, `install-backups`, `rollback` |
 | `agent_utils.core.setup.kiro` | `scripts/configure-kiro.py` | through `optional kiro-hooks` |
 | `agent_utils.core.setup.relay` | `scripts/configure-relay.py` | through `optional inbox-relay` |
+| `agent_utils.core.setup.adopt_job` | `scripts/configure-adopt.py` | through `optional inbox-adopt` |
 | `agent_utils.core.setup.session_names` | `scripts/configure-session-names.py` | through `optional session-names` |
 | `agent_utils.core.setup.zellij_status` | `scripts/configure-zellij-status.py` | through `optional zellij-status` or `optional zellij-adopt` |
 | `agent_utils.core.setup.zsh` | `scripts/configure-zsh.py` | through `optional zsh-startup` |
@@ -120,6 +121,30 @@ python3 scripts/configure-kiro.py --apply --remove   # undo
 
 An existing file is backed up beside itself before it is replaced or removed. When the
 file is already current, `--apply` exits 1 with `Already up to date.`
+
+### `agent_utils.core.setup.adopt_job`
+
+Wrapper: `scripts/configure-adopt.py`. Writes and loads the launchd job
+`~/Library/LaunchAgents/agent-utils.inbox-adopt.plist` (label `agent-utils.inbox-adopt`),
+which runs `agents admin inbox adopt --auto` at load and then every
+`inbox.adopt_interval_minutes` minutes (default 5; read from `config.json` when the job is
+written, so run it again after changing the value). The job is not kept running: each
+run is a short process that reads the Inbox files and exits. It logs to
+`~/.local/state/agent-utils/inbox-adopt.log`. PATH for the job holds the folders of
+`agtermctl`, `plannotator`, `claude` and `codex` plus `/usr/local/bin:/usr/bin:/bin`.
+Switch it off without removing it: `agents admin config set inbox.auto_adopt off --yes`.
+
+```sh
+python3 scripts/configure-adopt.py
+python3 scripts/configure-adopt.py --apply
+python3 scripts/configure-adopt.py --remove --apply  # undo
+```
+
+| Option | Meaning |
+|---|---|
+| `--apply` | Write the plist and load it. Without it, only a preview. |
+| `--remove` | With `--apply`: unload and delete the plist. |
+| `--home DIR` | Home folder. Default: your home. |
 
 ### `agent_utils.core.setup.relay`
 
@@ -265,6 +290,7 @@ Actions: `optional-list` (list) and `optional ITEM` (one item; `--yes` applies).
 |---|---|---|
 | `kiro-hooks` | `kiro` | `kiro-cli` on PATH or `~/.kiro` exists |
 | `inbox-relay` | `relay` | Kiro found, `agtermctl` and `plannotator` on PATH, and `kiro-hooks` configured |
+| `inbox-adopt` | `adopt_job` | `agtermctl` and `plannotator` on PATH |
 | `session-names` | `session_names` | always |
 | `zellij-status` | `zellij_status` | always |
 | `zellij-adopt` | `zellij_status --adopt` | always |
@@ -280,7 +306,7 @@ python3 scripts/configure-optional.py inbox-relay --apply
 |---|---|
 | `NAMES` | Items to run. None: list only. |
 | `--apply` | Pass `--apply` to each chosen module. |
-| `--detected` | Also choose every available item that is known to be unconfigured (`kiro-hooks`, `inbox-relay`; the status of the others is not detected). |
+| `--detected` | Also choose every available item that is known to be unconfigured (`kiro-hooks`, `inbox-relay`, `inbox-adopt`; the status of the others is not detected). |
 | `--home DIR` | Home folder passed to each module. Default: your home. |
 
 Items run in table order, so `kiro-hooks` goes before `inbox-relay`. It exits 0 and
@@ -347,7 +373,7 @@ Needs `gh` signed in.
 
 ### Wrapper scripts
 
-`scripts/install.py`, `scripts/configure-kiro.py`, `scripts/configure-relay.py`,
+`scripts/install.py`, `scripts/configure-kiro.py`, `scripts/configure-relay.py`, `scripts/configure-adopt.py`,
 `scripts/configure-session-names.py`, `scripts/configure-zellij-status.py`, `scripts/configure-zsh.py`,
 `scripts/configure-startup.py` and `scripts/configure-optional.py` each import the
 package (from the checkout when it is not installed) and call the module's `main()`.

@@ -27,13 +27,14 @@ import sys
 from .agents import AGENTS
 from .files import atomic_write
 from .paths import config_dir, config_path, state_dir
-from .setup import kiro, relay
+from .setup import adopt_job, kiro, relay
 
-SECTIONS = ('providers', 'placement', 'notify', 'projects', 'snippets', 'skills', 'instructions',
+SECTIONS = ('providers', 'placement', 'inbox', 'notify', 'projects', 'snippets', 'skills', 'instructions',
             'schedules', 'hooks')
 SECTION_TITLES = {
     'providers': 'Agents',
     'placement': 'agterm settings',
+    'inbox': 'Plannotator Inbox',
     'notify': 'Notifications',
     'projects': 'Projects and windows',
     'snippets': 'Personalization',
@@ -92,7 +93,7 @@ def read(file_id):
 # ---------------------------------------------------------------- schema
 
 class Setting:
-    """kind: bool, int (seconds), choice, text, url, agents (comma list), args (shell words).
+    """kind: bool, int (seconds, or the (min, max) in choices), choice, text, url, agents (comma list), args (shell words).
     A key ending in `.*` is a family; the last part is an agent or a variable name."""
     def __init__(self, key, section, file, path, kind, default, help, choices=None):
         self.key, self.section, self.file, self.path = key, section, file, tuple(path)
@@ -121,12 +122,13 @@ class Setting:
                 raise ValueError('%s takes on or off' % self.key)
             return value
         if self.kind == 'int':
+            low, high = self.choices or (0, 86400)
             try:
                 value = int(text.strip())
             except ValueError:
-                raise ValueError('%s takes a whole number of seconds' % self.key) from None
-            if not 0 <= value <= 86400:
-                raise ValueError('%s takes 0 to 86400' % self.key)
+                value = None
+            if value is None or not low <= value <= high:
+                raise ValueError('%s takes a whole number from %d to %d' % (self.key, low, high))
             return value
         if self.kind == 'choice':
             if text not in self.choices:
@@ -175,6 +177,10 @@ SETTINGS = [
             'Where new agterm rows go: default or top (once per row)', ('default', 'top')),
     Setting('coordinator_name', 'placement', 'config', ['coordinator_name'], 'text', 'Main',
             'Name of the coordinator Claude session (row title and --name)'),
+    Setting('inbox.auto_adopt', 'inbox', 'config', ['inbox', 'auto_adopt'], 'bool', True,
+            'Open an agterm row for each session Plannotator starts from the Inbox'),
+    Setting('inbox.adopt_interval_minutes', 'inbox', 'config', ['inbox', 'adopt_interval_minutes'], 'int', 5,
+            'Minutes between auto-adopt checks (run the inbox-adopt action again to apply)', (1, 1440)),
     Setting('notify.enabled', 'notify', 'notify', ['enabled'], 'bool', False, 'Send agent notifications'),
     Setting('notify.url', 'notify', 'notify', ['url'], 'url', '', 'ntfy URL, https://host/topic'),
     Setting('notify.away_after_seconds', 'notify', 'notify', ['away_after_seconds'], 'int', 120,
@@ -244,6 +250,7 @@ def _optional_items(home):
     return [
         ('kiro-hooks', 'Kiro attention and Inbox hooks', kiro.status(home)),
         ('inbox-relay', 'Inbox reply relay (launchd)', relay.status(home)),
+        ('inbox-adopt', 'Inbox auto-adopt job (launchd)', adopt_job.status(home)),
         ('zsh-startup', 'One-shot agterm startup hook in zsh', zsh_on),
     ]
 
@@ -421,10 +428,11 @@ ACTIONS = [
     Action('zellij-settings', 'projects', 'Choose a Zellij layout and session for a window or project', ['zellij', 'layout', 'set']),
     Action('zellij-layouts', 'projects', 'Zellij layouts: presets and your own files', ['zellij', 'layout', 'list']),
     Action('inbox-doctor', 'hooks', 'Plannotator Inbox health check', ['admin', 'inbox', 'doctor']),
-    Action('optional', 'hooks', 'List or apply optional configurations (kiro-hooks, inbox-relay, ...)',
+    Action('optional', 'hooks', 'List or apply optional configurations (kiro-hooks, inbox-relay, inbox-adopt, ...)',
            ['optional'], '--apply', module=True, takes='an item name'),
     Action('remove-kiro-hooks', 'hooks', 'Remove the Kiro hooks', ['kiro', '--remove'], '--apply', module=True),
     Action('remove-inbox-relay', 'hooks', 'Remove the Inbox reply relay job', ['relay', '--remove'], '--apply', module=True),
+    Action('remove-inbox-adopt', 'hooks', 'Remove the Inbox auto-adopt job', ['adopt_job', '--remove'], '--apply', module=True),
     Action('remove-session-names', 'hooks', 'Remove the session name hooks', ['session_names', '--remove'], '--apply', module=True),
     Action('remove-zellij-status', 'hooks', 'Remove the Zellij tab status hooks', ['zellij_status', '--remove'], '--apply', module=True),
     Action('optional-list', 'hooks', 'Optional configurations and their state', ['optional'], module=True),

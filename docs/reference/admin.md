@@ -30,6 +30,8 @@ Editable settings (the `SETTINGS` registry in `agent_utils/core/settings.py`):
 | `providers.enabled` | `config.json` | comma list of agents offered while auto-detect is off | empty |
 | `providers.launch_args.AGENT` | `config.json` | shell words, extra arguments for one agent at launch; `AGENT` is a supported agent id such as `kiro-cli` | none; `config list` and the configurator show every supported agent |
 | `new_session_position` | `config.json` | `default` or `top` (new agterm rows go to the top once per row) | `default` |
+| `inbox.auto_adopt` | `config.json` | bool: the `inbox-adopt` job opens an agterm row for each session Plannotator starts from the Inbox | on |
+| `inbox.adopt_interval_minutes` | `config.json` | whole number, 1 to 1440: minutes between the job's checks. Run `agents admin config run optional inbox-adopt --yes` again to apply a new value | 5 |
 | `coordinator_name` | `config.json` | name of the coordinator Claude session; a project may also set its own `coordinator_name` | `Main` |
 | `notify.enabled` | `notify.json` | bool; needs `notify.url` first | off |
 | `notify.url` | `notify.json` | ntfy URL, `https://host/topic` | empty |
@@ -140,9 +142,10 @@ agents admin config actions
 | `notify-show` | `agents admin notify show` | none, read-only |
 | `notify-test` | `agents admin notify test` | acts at once; `run` refuses it without `--yes` |
 | `inbox-doctor` | `agents admin inbox doctor` | none, read-only |
-| `optional` | `python3 -m agent_utils.core.setup.optional ITEM`; needs an item name (`kiro-hooks`, `inbox-relay`, `zsh-startup`, ...) | `--apply` |
+| `optional` | `python3 -m agent_utils.core.setup.optional ITEM`; needs an item name (`kiro-hooks`, `inbox-relay`, `inbox-adopt`, `zsh-startup`, ...) | `--apply` |
 | `remove-kiro-hooks` | `python3 -m agent_utils.core.setup.kiro --remove` | `--apply` |
 | `remove-inbox-relay` | `python3 -m agent_utils.core.setup.relay --remove` | `--apply` |
+| `remove-inbox-adopt` | `python3 -m agent_utils.core.setup.adopt_job --remove` | `--apply` |
 | `remove-session-names` | `python3 -m agent_utils.core.setup.session_names --remove` | `--apply` |
 | `remove-zellij-status` | `python3 -m agent_utils.core.setup.zellij_status --remove` | `--apply` |
 | `optional-list` | `python3 -m agent_utils.core.setup.optional` | none, read-only |
@@ -384,11 +387,19 @@ matching project.
 
 ```sh
 agents admin inbox adopt --launch ID
+agents admin inbox adopt --auto
 ```
+
+`--auto` is what the `inbox-adopt` launchd job runs. It adopts every launch that can be adopted
+and was not adopted before (recorded in `inbox.json`), and prints nothing when there is
+none. It does nothing when `inbox.auto_adopt` is off, when `agtermctl` is missing or when
+there is no config file. Launches that cannot be adopted yet (no session reference, no matching
+project) are tried again on the next pass.
 
 | Option | Meaning |
 | --- | --- |
-| `--launch ID` | Launch id from `inbox launches` (repeatable, required). |
+| `--launch ID` | Launch id from `inbox launches` (repeatable; required unless `--auto`). |
+| `--auto` | Adopt every new adoptable launch once; quiet when there is nothing to do. |
 | `--dry-run` (global) | Report without opening rows. |
 
 ### Thread edits

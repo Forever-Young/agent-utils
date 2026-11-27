@@ -26,7 +26,7 @@ installed hooks keep working.
 
 | Path | Written by | Purpose | Safe to delete? |
 |---|---|---|---|
-| `config.json` | you; `agents admin project ...`, `agents admin config set/unset/undo` | Windows, projects, providers, `remotes`, `new_session_position`, per-project `zellij`. | No: it holds your projects. |
+| `config.json` | you; `agents admin project ...`, `agents admin config set/unset/undo` | Windows, projects, providers, `remotes`, `new_session_position`, per-project `zellij`, `inbox` (`auto_adopt`, `adopt_interval_minutes`). | No: it holds your projects. |
 | `zellij-layouts/NAME.kdl` | you; `agents zellij layout new` | Your Zellij tab layouts. | No: they are yours. |
 | `config.json.backup-STAMP` | the commands above, before each change | Previous versions; `agents admin config undo config` restores the newest. | Yes. |
 | `config.json.lock` | the commands above | Write lock. | Yes, when no command runs. |
@@ -42,9 +42,10 @@ installed hooks keep working.
 |---|---|---|---|
 | `registry.json`, `registry.lock` | session, task and coordinator commands; `agents zellij` | Managed sessions, coordinators, workers, results; Zellij sessions agents created (`zellij_sessions`). | No: managed sessions lose their records and resume commands. |
 | `placement.json`, `placement.lock` | new-row placement | Rows already moved to the top, and the bootstrap baseline. | Yes: existing rows may be placed again once. |
-| `inbox.json`, `inbox.lock` | `agents admin inbox dispatch/adopt` | Which Inbox threads were dispatched to which record. | Yes: threads may be dispatched again. |
+| `inbox.json`, `inbox.lock` | `agents admin inbox dispatch/adopt` | Which Inbox threads were dispatched to which record, and which Inbox launches were auto-adopted. | Yes: threads may be dispatched and launches adopted again. |
 | `inbox-relay.json`, `inbox-relay.json.lock` | Kiro hooks, `agents admin inbox relay` | Live Kiro sessions and their connected Inbox threads. | Yes: thread connections are lost. |
 | `inbox-relay.log` | the relay launchd job | Relay output. | Yes. |
+| `inbox-adopt.log` | the auto-adopt launchd job | Auto-adopt output. | Yes. |
 | `dispatch.lock` | worker dispatch | Lock. | Yes, when no command runs. |
 | `messages/RECORD/ID.json` | worker follow-ups | Messages sent to a worker. | Yes, after the work is done. |
 | `worktrees/HASH/TASK/` | `agents agterm task ...` | Automatic task worktrees (git worktrees); `HASH` is 12 hex characters derived from the project id. | No while the task runs; remove finished ones with `git worktree remove`. |
@@ -72,6 +73,7 @@ installed hooks keep working.
 | `~/.bin/agterm-tools/agterm-startup.zsh` | `scripts/configure-zsh.py --apply` | zsh startup hook sourced by `~/.zshrc`. | No while the `~/.zshrc` block exists. |
 | `~/.cache/agent-utils/brew/` | `scripts/brew-local.py --apply` | Tarballs for the local formula. | Yes. |
 | `~/Library/LaunchAgents/agent-utils.inbox-relay.plist` | `scripts/configure-relay.py --apply` | Keeps the Inbox relay running. | Use `--remove --apply`. |
+| `~/Library/LaunchAgents/agent-utils.inbox-adopt.plist` | `scripts/configure-adopt.py --apply` | Runs `agents admin inbox adopt --auto` every `inbox.adopt_interval_minutes` minutes. | Use `--remove --apply`. |
 | `~/Library/LaunchAgents/agent-utils.skills-check.plist` | `agents admin skills schedule install --apply` | Scheduled skills check. | Use `agents admin skills schedule remove --apply`. |
 
 ### Provider and shell files, opt-in only

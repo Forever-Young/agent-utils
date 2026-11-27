@@ -110,6 +110,7 @@ Run a command without `--yes` to preview it.
 | zsh startup hook | shows the session chooser in every new agterm shell | `agents admin config run optional zsh-startup --yes` | [sessions.md](sessions.md#show-the-chooser-in-every-new-shell) |
 | Kiro hooks | marks Kiro sessions blocked/active/completed, sends notifications, Inbox reply pointers | `agents admin config run optional kiro-hooks --yes` | [notifications.md](notifications.md) |
 | Session-name hooks | keeps agterm and agent session names in step | `agents admin config run optional session-names --yes` | [session-names.md](session-names.md) |
+| Inbox auto-adopt job | launchd job that opens an agterm row for sessions started from the Inbox, every few minutes | `agents admin config run optional inbox-adopt --yes` | [inbox.md](inbox.md#adopt-them-automatically) |
 | Inbox relay job | launchd job that wakes idle Kiro sessions on Inbox replies | `agents admin config run optional inbox-relay --yes` | [inbox.md](inbox.md#wake-kiro-on-a-reply) |
 | Shared instructions | one rule set for every agent | `agents admin instructions apply --yes` | [instructions.md](instructions.md) |
 | Skills store | one copy of each skill for every agent | `agents admin skills sync --apply` | [skills.md](skills.md) |

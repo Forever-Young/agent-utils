@@ -21,7 +21,7 @@ from .setup import optional
 # Actions reached through their own entries rather than listed one by one.
 HIDDEN_ACTIONS = {'optional', 'optional-list', 'zellij-mobile-install', 'zellij-mobile-remove',
                   'schedule-install', 'schedule-remove'}
-HOOK_REMOVE = {'kiro-hooks': 'remove-kiro-hooks', 'inbox-relay': 'remove-inbox-relay',
+HOOK_REMOVE = {'kiro-hooks': 'remove-kiro-hooks', 'inbox-relay': 'remove-inbox-relay', 'inbox-adopt': 'remove-inbox-adopt',
                'session-names': 'remove-session-names', 'zellij-mobile': 'zellij-mobile-remove',
                'zellij-status': 'remove-zellij-status', 'zellij-adopt': 'remove-zellij-status'}
 

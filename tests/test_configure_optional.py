@@ -21,9 +21,9 @@ class Optional(unittest.TestCase):
     def test_list_runs_nothing(self):
         self.assertEqual(self.run_main(), 0); self.runner.assert_not_called()
 
-    def test_detected_applies_only_kiro_hooks_when_relay_needs_them(self):
+    def test_detected_applies_kiro_hooks_and_adopt_job_but_not_relay(self):
         self.run_main('--detected', '--apply')
-        self.assertEqual(self.scripts(), ['kiro'])
+        self.assertEqual(self.scripts(), ['kiro', 'adopt_job'])
         self.assertTrue(all('--apply' in c[0][0] for c in self.runner.call_args_list))
 
     def test_relay_runs_when_hooks_exist(self):

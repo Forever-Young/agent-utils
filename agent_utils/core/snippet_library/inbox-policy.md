@@ -37,6 +37,12 @@ before ending a turn that sent a question, so a reply that arrived meanwhile is 
 missed. A hook may print a pointer line naming a thread; read the reply itself with
 `read_thread`.
 
+Session started from the Inbox: if your session began with a message from the Plannotator
+Inbox (a "new thread" or "you joined the Inbox" notice), the owner reads the Inbox, not this
+chat. Send the answer there by default, as a reply in that thread (`reply_to` the id given),
+even when it is short, and put every question in a `:::question` block. The chat gets only
+the thread link. This replaces the "worth sending" test below for such sessions.
+
 Worth sending means: it has a decision, needs more than a screen of reading,
 includes pictures or files, or will be read later. A fact, a one-line result, a
 small fix or a status that needs no reply stays in the chat. Use one thread per work

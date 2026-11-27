@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import sys
 
-from . import kiro, relay, zellij_mobile
+from . import adopt_job, kiro, relay, zellij_mobile
 
 MODULE = 'agent_utils.core.setup.'
 
@@ -25,6 +25,8 @@ def items(home):
         ('inbox-relay', 'relay', 'Keep the Inbox reply relay running (launchd)',
          kiro_found and both and hooks, relay.status(home),
          'needs Kiro, agtermctl, plannotator and kiro-hooks applied first'),
+        ('inbox-adopt', 'adopt_job', 'Open agterm rows for sessions started from the Inbox (launchd, every few minutes)',
+         both, adopt_job.status(home), 'needs agtermctl and plannotator on PATH'),
         ('session-names', 'session_names', 'Shared session name hooks', True, None, ''),
         # A mobile profile is a preference, not auto-detected missing agent setup.
         ('zellij-mobile', 'zellij_mobile', 'Mobile Zellij config (separate from desktop)', True, zellij_mobile.status(home) or None, ''),

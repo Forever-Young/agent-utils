@@ -85,7 +85,7 @@ AGTERM_OPERATIONS = {
 }
 ADMIN_VIA_AGTERM = ('project', 'settings', 'inbox')
 
-SETUP_MODULES = ['installer', 'kiro', 'relay', 'session_names', 'zellij_status', 'zsh', 'startup', 'optional']
+SETUP_MODULES = ['installer', 'kiro', 'relay', 'adopt_job', 'session_names', 'zellij_status', 'zsh', 'startup', 'optional']
 
 
 def read(name):

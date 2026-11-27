@@ -253,11 +253,20 @@ def list_launches(args, pairs=None, base=None):
 
 def adopt(args, ag, pairs, base=None):
     """Open a terminal row in the launch's agterm workspace that attaches to the launch."""
-    ids = set(args.launch)
-    if not ids:
-        raise ValueError('inbox adopt needs --launch ID (repeatable); see `inbox launches`')
-    report = {'adopted': [], 'skipped': []}
+    auto = getattr(args, 'auto', False)
     known = {l['id']: l for l in launches(base)}
+    if auto:
+        from ..agterm.state import locked_registry
+        with locked_registry('inbox') as state:
+            done = set(state.setdefault('adopted', {}))
+        # Only launches that can be adopted now; the rest are tried again on the next pass.
+        ids = {i for i, l in known.items() if i not in done and attach_argv(l)[0] and not l['deleted'] and not l['error']
+               and match_project(l['folder'], pairs)}
+    else:
+        ids = set(args.launch)
+        if not ids:
+            raise ValueError('inbox adopt needs --launch ID (repeatable) or --auto; see `inbox launches`')
+    report = {'adopted': [], 'skipped': []}
     for launch_id in sorted(ids):
         launch = known.get(launch_id)
         if not launch:
@@ -275,7 +284,12 @@ def adopt(args, ag, pairs, base=None):
             report['skipped'].append({'id': launch_id, 'reason': 'folder unavailable: ' + cwd}); continue
         terminal = ag.launch(window, project, argv, cwd)
         report['adopted'].append({'id': launch_id, 'window': window['name'], 'project': project['id'], 'argv': argv, 'terminal': terminal})
-    print(json.dumps(report, indent=2, default=str))
+        if auto and not ag.dry:
+            from ..agterm.state import locked_registry
+            with locked_registry('inbox') as state:
+                state.setdefault('adopted', {})[launch_id] = {'at': datetime.now(timezone.utc).isoformat()}
+    if not auto or report['adopted']:
+        print(json.dumps(report, indent=2, default=str))
     return report
 
 

@@ -63,6 +63,23 @@ agents admin inbox adopt --launch LAUNCH_ID  # open an agterm row attached to it
 
 Claude (`claude attach`) and Codex (`codex resume`) only.
 
+### Adopt them automatically
+
+A session you start from the Inbox on your phone has no agterm row until it is adopted.
+A small scheduled job does that for you, without a loop that keeps running: every few
+minutes launchd starts `agents admin inbox adopt --auto`, which opens a row for each
+new launch and exits (nothing is printed when there is none). Each launch is adopted once.
+
+```sh
+agents admin config run optional inbox-adopt --yes   # install the job (also in `agents configure`, Hooks)
+agents admin config set inbox.adopt_interval_minutes 10 --yes   # default 5; install again to apply
+agents admin config set inbox.auto_adopt off --yes   # pause without removing the job
+agents admin config run remove-inbox-adopt --yes     # remove the job
+```
+
+`agents admin config run optional --detected --yes` also installs it when `agtermctl` and
+`plannotator` are found. Without agterm the job does nothing.
+
 ## Edit a thread
 
 ```sh

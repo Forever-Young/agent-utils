@@ -164,6 +164,29 @@ class InboxLaunchTests(InboxThreadTests):
             inbox.adopt(Namespace(launch=[]), ag, pairs, self.base)
 
 
+    def test_auto_adopt_once_and_quiet(self):
+        self.add('l1', 'claude-code', 'ab12'); self.add('l2', 'pi', 'p1'); self.add('l4', 'codex', None)
+        pairs = [({'name': 'Personal', 'default_agent': 'codex'}, {'id': 'demo', 'name': 'Demo', 'roots': [str(self.root)]})]
+        ag = Mock(dry=False); ag.launch.return_value = 'term-1'
+        with patch('builtins.print') as out:
+            first = inbox.adopt(Namespace(launch=[], auto=True), ag, pairs, self.base)
+        self.assertEqual([r['id'] for r in first['adopted']], ['l1'])
+        self.assertEqual(ag.launch.call_count, 1); out.assert_called()
+        with patch('builtins.print') as out:
+            second = inbox.adopt(Namespace(launch=[], auto=True), ag, pairs, self.base)
+        self.assertEqual(second['adopted'], []); self.assertEqual(ag.launch.call_count, 1)
+        out.assert_not_called()  # nothing new: no output
+
+    def test_auto_adopt_dry_run_records_nothing(self):
+        self.add('l1', 'claude-code', 'ab12')
+        pairs = [({'name': 'Personal', 'default_agent': 'codex'}, {'id': 'demo', 'name': 'Demo', 'roots': [str(self.root)]})]
+        ag = Mock(dry=True); ag.launch.return_value = 'term-1'
+        with patch('builtins.print'):
+            inbox.adopt(Namespace(launch=[], auto=True), ag, pairs, self.base)
+            again = inbox.adopt(Namespace(launch=[], auto=True), ag, pairs, self.base)
+        self.assertEqual([r['id'] for r in again['adopted']], ['l1'])
+
+
 class InboxFilterTests(InboxThreadTests):
     def test_window_filter_applies_after_matching(self):
         work = ({'name': 'Work', 'default_agent': 'codex'}, {'id': 'exact', 'name': 'E', 'roots': [str(self.root)]})

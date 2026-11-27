@@ -51,6 +51,11 @@ def validate(data):
         raise ValueError('Expected version 1 and windows array')
     if data.get('new_session_position','default') not in ('default','top'):
         raise ValueError('new_session_position must be default or top')
+    inbox_cfg=data.get('inbox',{})
+    if not isinstance(inbox_cfg,dict):raise ValueError('inbox must be an object')
+    if not isinstance(inbox_cfg.get('auto_adopt',True),bool):raise ValueError('inbox.auto_adopt must be boolean')
+    minutes=inbox_cfg.get('adopt_interval_minutes',5)
+    if isinstance(minutes,bool) or not isinstance(minutes,int) or not 1<=minutes<=1440:raise ValueError('inbox.adopt_interval_minutes must be a whole number from 1 to 1440')
     for holder in [data]+[p for w in data['windows'] if isinstance(w,dict) for p in w.get('projects',[]) if isinstance(p,dict)]:
         name=holder.get('coordinator_name','Main')
         if not isinstance(name,str) or not name.strip() or len(name)>80:
@@ -341,6 +346,7 @@ def main(argv=None):
     parser.add_argument('--enabled-agent',choices=AGENTS,action='append',default=None)
     parser.add_argument('--thread',action='append',default=[],help='Plannotator Inbox thread id (repeatable)')
     parser.add_argument('--launch',action='append',default=[],help='inbox adopt: Plannotator Inbox launch id (repeatable)')
+    parser.add_argument('--auto',action='store_true',help='inbox adopt: adopt every new adoptable launch once (the scheduled job); quiet when there is nothing to do')
     parser.add_argument('--answered',action='store_true',help='inbox: threads whose last message is the person\'s')
     parser.add_argument('--force',action='store_true');parser.add_argument('--fix',action='store_true')
     parser.add_argument('--subject');parser.add_argument('--message');parser.add_argument('--question');parser.add_argument('--author-host')
@@ -380,6 +386,10 @@ def main(argv=None):
         pairs=projects(data) if data else []
         if args.operation=='threads':inbox.list_threads(args,pairs);return
         if args.operation=='launches':inbox.list_launches(args,pairs);return
+        if args.operation=='adopt' and args.auto:
+            import shutil
+            inbox_cfg=data.get('inbox',{}) if data else {}
+            if not data or not inbox_cfg.get('auto_adopt',True) or not shutil.which('agtermctl'):return
         if args.operation=='adopt':inbox.adopt(args,Agterm(args.dry_run,data.get('new_session_position','default')),pairs);return
         inbox.dispatch(args,Agterm(args.dry_run,data.get('new_session_position','default')),pairs);return
     if args.command=='settings':
